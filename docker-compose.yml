@@ -1,3 +1,9 @@
+volumes:
+  py_pg_data:
+  pgadmin_data:
+
+networks:
+  py-net-local:
 services:
   app:
     build: 
@@ -10,4 +16,50 @@ services:
     ports:
       - "8000:8000"
     command: >
-      sh -c "python manage.py runserver 0.0.0.0:8000"
+      sh -c " python manage.py wait_for_db &&
+              python manage.py migrate &&
+              python manage.py runserver 0.0.0.0:8000"
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: pythonone
+      DB_USER: pythonone
+      DB_PASSWORD: pythonone
+    networks:
+      py-net-local:
+    depends_on:
+      - postgres
+
+  postgres:
+    platform: linux/amd64
+    image: postgres:16
+    container_name: python_one_postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: "pythonone"
+      POSTGRES_PASSWORD: "pythonone"
+      POSTGRES_DB: "pythonone"
+    volumes:
+      - py_pg_data:/var/lib/postgresql/data
+    networks:
+      py-net-local:
+        aliases:
+          - postgres
+
+  pgadmin:
+    image: dpage/pgadmin4:9.12
+    container_name: darth_pgadmin
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: "admin@admin.com"
+      PGADMIN_DEFAULT_PASSWORD: "admin"
+      PGADMIN_LISTEN_ADDRESS: "0.0.0.0"
+      PGADMIN_DISABLE_POSTFIX: "1"
+    networks:
+      py-net-local:
+        aliases:
+          - pgadmin
